@@ -4,7 +4,7 @@ Early Archimedes machines shipped with a built in facility for sending short
 messages to other workstations. Some Googling [suggests that RiscOS 2 had this
 built in](http://beebmaster.co.uk/A4201-5.html) as a menu option:
 
-![Photo of RiscOS 2 networking showing Notify](risco2notify.jpg)
+![Photo of RiscOS 2 networking showing Notify](riscos2notify.jpg)
 
 There was also a * command (this was the RiscOS CLI) that would notify another
 station.
