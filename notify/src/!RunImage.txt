@@ -1,0 +1,313 @@
+REM Remote Version 2.10
+LIBRARY "<Obey$Dir>.Wimp"
+PROCWimp_Start("Notify",617,1072)
+PROCUser_SetInitialData
+PROCCreate_Windows
+PROCCreate_Menus
+PROCWimp_WaitForEvent
+PROCWimp_NetCloseDown
+PROCWimp_CloseDown
+END
+:
+DEF PROCUser_SetInitialData
+m$=FNWimp_ReadVariable("Notify$IconBarMessages")
+maxi%=VAL(m$)
+IF maxi%<=0 THEN maxi%=10
+IF maxi%>20 THEN maxi%=20
+DIM rnet%(maxi%),rstat%(maxi%),rmes$(maxi%),ricon%(maxi%),rack%(maxi%)
+DIM text 20*(maxi%+1),sprite 20
+nmr%=0
+c1%=TRUE : c2%=TRUE : c3%=TRUE
+ndir$=FNWimp_ReadVariable("Notify$Dir")
+SYS "OS_Module",6,,,1024 TO ,,rbuff%
+SYS "OS_Module",6,,,1024 TO ,,tbuff%
+SYS"Econet_ReadLocalStationAndNet" TO thisstat%,thisnet%
+SYS"Econet_ClaimPort",&50
+SYS"Econet_CreateReceive",&50,255,255,rbuff%,255 TO handle%
+ENDPROC
+:
+DEF PROCCreate_Windows
+message%=FNWimp_WindowLoad("message")
+info%=FNWimp_WindowLoad("Info")
+config%=FNWimp_WindowLoad("Config")
+mtnotify%=FNWimp_WindowLoad("mtnotify")
+baricon%=FNWimp_IconBar("!Notify")
+PROCLoadConfig
+ENDPROC
+:
+DEF PROCLoadConfig
+LOCAL f$,e%
+f$=ndir$+".Config"
+SYS"OS_File",5,f$ TO e%
+IF e%=1 THEN
+ c=OPENIN f$
+  INPUT#c,c1%
+  INPUT#c,c2%
+  INPUT#c,c3%
+ CLOSE#c
+ENDIF
+IF c1%=TRUE THEN PROCWimp_IconSetSelect(config%,0) ELSE PROCWimp_IconUnsetSelect(config%,0)
+IF c2%=TRUE THEN PROCWimp_IconSetSelect(config%,1) ELSE PROCWimp_IconUnsetSelect(config%,1)
+IF c3%=TRUE THEN PROCWimp_IconSetSelect(config%,7) ELSE PROCWimp_IconUnsetSelect(config%,7)
+ENDPROC
+:
+DEF PROCSaveConfig
+LOCAL f$,e%
+f$=ndir$+".Config"
+SYS"OS_File",5,f$ TO e%
+IF e%=0 OR e%=1 THEN
+ c=OPENOUT f$
+ PRINT#c,c1%
+ PRINT#c,c2%
+ PRINT#c,c3%
+ CLOSE#c
+ELSE
+ PROCWimp_WindowAlert("Notify","Config file is a directory.")
+ENDIF
+ENDPROC
+:
+DEF FNEvent_Save(window%)=FALSE
+:
+DEF FNEvent_Sprites(window%)=sprites%
+:
+DEF PROCCreate_Menus
+barmenu%=FNWimp_MenuCreate("Notify\Info>info%\Config>config%\Quit")
+rm%=FNWimp_MenuCreate("Message\Acknowledge\Read\Remove")
+ENDPROC
+:
+DEF FNEvent_Menu(window%,icon%)
+IF window%=-2 THEN
+ IF icon%=baricon% THEN =barmenu%
+ FOR k=1 TO nmr%
+  IF ricon%(k)=icon% THEN
+   mon%=k
+   IF rack%(k)=TRUE THEN PROCWimp_MenuDisable(rm%,1) ELSE PROCWimp_MenuEnable(rm%,1)
+   =rm%
+  ENDIF
+ NEXT
+ENDIF
+=FALSE
+:
+DEF PROCEvent_WindowClose(window%,buttons%)
+ENDPROC
+:
+DEF PROCEvent_Draw(window%,x_origin%,y_origin%)
+ENDPROC
+:
+DEF PROCEvent_MouseClick(window%,icon%,button%,x%,y%)
+CASE window% OF
+WHEN message%  : IF icon%=2 THEN
+                  t$=FNWimp_IconText(message%,0)
+                  m$=FNWimp_IconText(message%,1)
+                  IF t$<>"" THEN
+                   PROCWimp_WindowClose(message%)
+                   PROCSendMessage(t$,m$)
+                  ELSE
+                   PROCWimp_WindowAlert("Notify","Please specify the station to send it to.")
+                  ENDIF
+                 ENDIF
+WHEN -2        : IF icon%=baricon% THEN
+                  PROCWimp_WindowOpen(message%)
+                  PROCWimp_IconPutText(message%,0,"")
+                  PROCWimp_IconPutText(message%,1,"")
+                  PROCWimp_IconCaret(message%,0,0)
+                 ENDIF
+                 FOR k=1 TO nmr%
+                  IF ricon%(k)=icon% THEN
+                   PROCDisplayMes(rstat%(k),rnet%(k),rmes$(k))
+                   IF button%=4 THEN PROCRemoveMes(k)
+                  ENDIF
+                 NEXT
+WHEN mtnotify% : IF icon%=1 THEN
+                  time%=0
+                  PROCWimp_WindowClose(mtnotify%)
+                  MOUSE RECT 0,0,1600,1200
+                 ENDIF
+WHEN config%   : CASE icon% OF
+                  WHEN 0 : IF FNWimp_IconCheckSelect(config%,0)=TRUE THEN
+                            PROCWimp_IconUnsetSelect(config%,0)
+                            c1%=FALSE
+                           ELSE
+                            PROCWimp_IconSetSelect(config%,0)
+                            c1%=TRUE
+                           ENDIF
+                  WHEN 1 : IF FNWimp_IconCheckSelect(config%,1)=TRUE THEN
+                            PROCWimp_IconUnsetSelect(config%,1)
+                            c2%=FALSE
+                           ELSE
+                            PROCWimp_IconSetSelect(config%,1)
+                            c2%=TRUE
+                           ENDIF
+                 WHEN 7 : IF FNWimp_IconCheckSelect(config%,7)=TRUE THEN
+                            PROCWimp_IconUnsetSelect(config%,7)
+                            c3%=FALSE
+                           ELSE
+                            PROCWimp_IconSetSelect(config%,7)
+                            c3%=TRUE
+                           ENDIF
+                  WHEN 2 : PROCSaveConfig
+                           PROCWimp_MenuClose
+                  WHEN 3 : PROCLoadConfig
+                           PROCWimp_MenuClose
+                  WHEN 6 : PROCWimp_MenuClose
+                 ENDCASE
+ENDCASE
+ENDPROC
+:
+DEF PROCEvent_KeyPress(window%,icon%,key%)
+IF window%=message% AND icon%=1 AND key%=13 THEN
+ t$=FNWimp_IconText(message%,0)
+ m$=FNWimp_IconText(message%,1)
+ IF t$<>"" THEN
+  PROCWimp_WindowClose(message%)
+  PROCSendMessage(t$,m$)
+ ELSE
+  PROCWimp_WindowAlert("Notify","Please specify the station to send it to.")
+ ENDIF
+ENDIF
+ENDPROC
+:
+DEF PROCEvent_MenuChoice(menu%)
+choice%=FNWimp_MenuChoice(0)
+CASE menu% OF
+ WHEN barmenu% : IF choice%=3 THEN
+                  IF nmr%>0 THEN
+                   a%=FNWimp_WindowCancel("!Notify","Messages have not been read, are you sure you want to quit?")
+                   IF a%=TRUE THEN finished%=TRUE
+                  ELSE
+                   finished%=TRUE
+                  ENDIF
+                 ENDIF
+ WHEN rm%      : CASE choice% OF
+                  WHEN 1 : PROCAckMes(mon%)
+                  WHEN 2 : PROCDisplayMes(rstat%(mon%),rnet%(mon%),rmes$(mon%))
+                           PROCRemoveMes(mon%)
+                  WHEN 3 : PROCRemoveMes(mon%)
+                 ENDCASE
+ENDCASE
+ENDPROC
+:
+DEF PROCAckMes(m%)
+$(tbuff%)="Message received."
+SYS"Hourglass_On"
+SYS"Econet_DoTransmit",1,&50,rstat%(m%),rnet%(m%),tbuff%,255,5,5 TO tstatus%
+SYS"Hourglass_Off"
+IF tstatus%<>0 THEN PROCTransError(tstatus%,rnet%(m%),rstat%(m%))
+IF tstatus%=0 THEN rack%(m%)=TRUE
+ENDPROC
+:
+DEF PROCRemoveMes(m%)
+LOCAL k
+FOR k=1 TO nmr%
+ PROCWimp_IconBarDel(ricon%(k))
+NEXT
+FOR k=m% TO nmr%-1
+ rstat%(k)=rstat%(k+1)
+ rnet%(k)=rnet%(k+1)
+ rmes$(k)=rmes$(k+1)
+ ricon%(k)=ricon%(k+1)
+ rack%(k)=rack%(k+1)
+NEXT
+nmr%-=1
+PROCReloadNotifies
+ENDPROC
+:
+DEF PROCReloadNotifies
+LOCAL k,nm%
+IF nmr%>0 THEN
+ nm%=nmr%
+ nmr%=0
+ FOR k=1 TO nm%
+  nmr%=k
+  t$=STR$(rnet%(k))+"."+STR$(rstat%(k))
+  ricon%(k)=FNWimp_IconBarText("Notify",t$)
+ NEXT
+ENDIF
+ENDPROC
+:
+DEF PROCDisplayMes(s%,n%,m$)
+title$="Message from station "+STR$(n%)+"."+STR$(s%)
+CASE c2% OF
+ WHEN TRUE : VDU 7
+             PROCWimp_IconPutText(mtnotify%,0,m$)
+             PROCWimp_WindowTitle(mtnotify%,title$)
+             !wimp%=mtnotify%
+             SYS"Wimp_GetWindowState",,wimp%
+             x%=wimp%!4 : y%=wimp%!8
+             w%=wimp%!12-wimp%!4 : h%=wimp%!16-wimp%!8
+             MOUSE RECT x%,y%,w%,h%-1
+ OTHERWISE : PROCWimp_WindowAlert(title$,m$)
+ENDCASE
+ENDPROC
+:
+DEF PROCEvent_BoxDrag(fwindow%,ficon%,twindow%,ticon%)
+ENDPROC
+:
+DEF PROCEvent_LoadFile(file$,type$,window%,icon%)
+ENDPROC
+:
+DEF PROCEvent_SaveFile(file$,window%)
+ENDPROC
+:
+DEF PROCEvent_HelpRequest(window%,icon%)
+ENDPROC
+:
+DEF PROCReadReceive
+LOCAL t$
+SYS"Econet_ReadReceive",handle% TO stat%,flag%,portno%,statno%,netno%,rbuff%,bufsize%
+SYS"Econet_AbandonReceive",handle%
+t$=$(rbuff%)
+CASE flag% OF
+WHEN 0 : IF c3%=TRUE THEN VDU 7
+         IF c1%=TRUE THEN
+          IF nmr%<maxi% THEN
+           nmr%+=1
+           rnet%(nmr%)=netno%
+           rstat%(nmr%)=statno%
+           rmes$(nmr%)=$(rbuff%)
+           ricon%(nmr%)=FNWimp_IconBarText("Notify",STR$(netno%)+"."+STR$(statno%))
+          ELSE
+           PROCDisplayMes(statno%,netno%,t$)
+          ENDIF
+         ELSE
+          PROCDisplayMes(statno%,netno%,t$)
+         ENDIF
+WHEN 1 : PROCDisplayMes(statno%,netno%,t$)
+ENDCASE
+SYS"Econet_CreateReceive",&50,255,255,rbuff%,255 TO handle%
+ENDPROC
+:
+DEF PROCSendMessage(t$,m$)
+LOCAL net%,stat%
+i=INSTR(t$,".")
+IF i=0 THEN
+ net%=thisnet%
+ stat%=VAL(t$)
+ELSE
+ net%=VAL(LEFT$(t$,i-1))
+ stat%=INT(VAL(RIGHT$(t$,LEN(t$)-i)))
+ENDIF
+$(tbuff%)=m$
+SYS"Hourglass_On"
+SYS"Econet_DoTransmit",0,&50,stat%,net%,tbuff%,255,5,5 TO tstatus%
+SYS"Hourglass_Off"
+IF tstatus%<>0 THEN PROCTransError(tstatus%,net%,stat%)
+ENDPROC
+:
+DEF PROCTransError(n%,e%,s%)
+e$="Error whilst transmitting: "
+CASE n% OF
+ WHEN 1 : e$+="Line Jammed."
+ WHEN 2 : e$+="Network error."
+ WHEN 3 : e$="Station "+STR$(e%)+"."+STR$(s%)+" not listening."
+ WHEN 4 : e$+="No Clock."
+ENDCASE
+PROCWimp_WindowAlert("Notify",e$)
+ENDPROC
+:
+DEF PROCWimp_NetCloseDown
+SYS"Econet_AbandonReceive",handle%
+SYS"Econet_ReleasePort",&50
+SYS"OS_Module",7,,rbuff%
+SYS"OS_Module",7,,tbuff%
+ENDPROC

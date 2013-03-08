@@ -1,0 +1,97 @@
+>Notify
+
+Notify is a simple program to use.
+
+I have tested it with Ethernet 10 base 2 networks
+with RiscPCs but it should work with all acorn
+networks.
+
+It works like the old Acorn Notify.  You type in a
+station no. and it sends them a message.  You may
+think this type of program is pointless.  Well, I
+agree with you, but I was bored!
+
+Unlike the Acorn's notify program, messages can be
+made to appear on the icon bar as icons, and in
+multi-tasking message boxes.  This saves the problem
+of having  machine frozen by some idiot sending it
+a message.
+
+Icons on the icon bar
+---------------------
+
+The notify icon is a small yellow telephone. 
+Clicking with middle button, it produces a menu with
+options info, config and quit.
+Clicking with select brings up a send window.
+
+If you get sent a message and it does appear on the
+icon bar then the picture is a small, black
+explanation mark (!).  This will have the senders
+network no. and station no. in the format:
+
+    netno.statno   eg  128.45
+
+Clicking select reads and cancels the message.  This
+means that the message is displayed, and the
+message is deleted.
+Clicking adjust reads the message but does not
+delete it, so you can read it again.
+Clicking middle button brings up a menu.
+ + Acknowledge sends a message back to the sender
+   saying you have received the message.  These
+   will NOT appear on the icon bar.
+ + Read has the same effect as clicking select.
+ + Remove deleted the message without reading it.
+
+Sending Messages
+----------------
+
+Click select on the Notify icon.  Type in the 
+station no. then press return, type the message then
+press return or click on 'Send'.
+
+For instance:
+
+Station: 41
+Message: Hello!
+
+This will send to local network adress, 128 on new
+acorn networks.  To specify network no. type
+
+  netno.statno
+
+For instance:   1.41
+
+Send to network no. 1, station no. 41.
+
+Config
+------
+
+The config window has three options.
+
+ + Messages appear on icon bar.
+ + Multitasking message boxes.
+ + Beep when message received.
+
+The first option means that all messages will appear
+on the icon bar as icons.
+
+NB: up to a certain amount which is specified in
+the run file, default 10, which cannot be more than
+20, ie if set to 5, 5 messages will appear on icon
+bar and past that they will not.
+
+If the first option is not set then messages will
+appear in either non-multitasking error boxes or
+multitasking boxes.  The second option sets this
+
+The third option sets whether a beep is emmitted when
+a message is received to alert the user to this.
+
+Errors
+------
+
+If a serious error occurs - for any reason - then the
+message data, if there is any, will be saved in the
+Wimp$ScrapDir as long as it is set.

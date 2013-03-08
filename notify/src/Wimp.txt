@@ -1,0 +1,940 @@
+REM|
+REM|
+REM|                -------------------------------
+REM|                   WIMP PROCEDURE LIBRARY (Edited version)
+REM|
+REM|                     Index of Contents
+REM|
+REM|                -------------------------------
+REM|
+REM|                    1.Windows
+REM|
+REM|                    2.Icons
+REM|
+REM|                    3.Menus
+REM|
+REM|                    4.Sprites
+REM|
+REM|                    5.Miscellaneous
+REM|
+REM|                    6.Polling
+REM|
+REM|                -------------------------------
+REM|
+REM|
+REM|
+REM|
+REM|
+REM|
+REM|                -------------------------------
+REM|                          1.Windows
+REM|                -------------------------------
+REM|
+REM|
+REM|          ------------------------------------------------
+REM|
+REM|                      Procedures :
+REM|
+REM|             PROCWimp_WindowAlert(title$,message$)
+REM|             PROCWimp_WindowAlertBox(title$,message$,button%)
+REM|             FNWimp_WindowCancel(title$,message$)
+REM|             PROCWimp_WindowErrorBox(title$,message$)
+REM|             FNWimp_WindowTitle(window%)
+REM|             PROCWimp_WindowTitle(window%,title$)
+REM|             FNWimp_WindowLoad(window$)
+REM|             FNWimp_WindowLoadFrom(window$,template$)
+REM|             PROCWimp_WindowBringToTop(window%)
+REM|             PROCWimp_WindowForceDraw(window%)
+REM|             PROCWimp_WindowOpen(window%)
+REM|             PROCWimp_WindowInterface
+REM|
+REM|           ----------------------------------------------
+REM|
+REM|
+REM|
+DEF PROCWimp_WindowAlert(title$,message$)
+PROCWimp_WindowAlertBox(title$,message$,0)
+ENDPROC
+:
+DEF PROCWimp_WindowAlertBox(title$,message$,button%)
+LOCAL response%
+$(wimp%+4)=message$
+CASE button% OF
+ WHEN 2    : response%=1
+ WHEN 1    : response%=15
+ WHEN 3    : response%=(1<<5)+16
+ WHEN 4    : response%=(1<<6)+16
+OTHERWISE : response%=16
+ENDCASE
+SYS "Wimp_ReportError",wimp%,response%,title$ TO ,response%
+ENDPROC
+:
+DEF FNWimp_WindowCancel(title$,message$)
+$(wimp%+4)=message$
+response%=23
+SYS "Wimp_ReportError",wimp%,response%,title$ TO ,response%
+=response%-2
+:
+DEF PROCWimp_WindowErrorBox(title$,message$)
+PROCWimp_WindowAlertBox(title$,message$,2)
+ENDPROC
+:
+DEF FNWimp_WindowTitle(window%)
+wimp%!0=window%
+SYS "Wimp_GetWindowInfo",,wimp%
+IF ((wimp%!60)AND&100)=0 ERROR 1,"Title isn't indirected"
+=$(wimp%!76)
+:
+DEF PROCWimp_WindowTitle(w%,t$)
+wimp%!0=w%
+SYS"Wimp_GetWindowInfo",,wimp%
+$(wimp%!76)=t$
+wimp%!28=-1
+SYS"Wimp_OpenWindow",,wimp%
+ENDPROC
+:
+DEF FNWimp_WindowLoad(window$)
+=FNWimp_WindowLoadFrom(window$,"<Obey$Dir>.Templates")
+:
+DEF FNWimp_WindowLoadFrom(window$,template$)
+LOCAL c%,i%,n%,j%,sp$,sp2$
+SYS "Wimp_OpenTemplate",,template$
+SYS "Wimp_LoadTemplate",,wimp%,icons%,icon_memory%,-1,window$,0 TO ,,icons%
+CASE sprites% OF
+ WHEN 1    : wimp%!64=sprites%
+ OTHERWISE : wimp%!64=FNEvent_Sprites(window%)
+ENDCASE
+SYS "Wimp_CreateWindow",,wimp% TO c%
+SYS "Wimp_CloseTemplate"
+SYS "Wimp_WhichIcon",c%,wimp%+40,1+2+(1<<8),2+(1<<8)
+CASE wimp%!40 OF
+ WHEN -1   :
+ OTHERWISE : i%=40
+ REPEAT
+   wimp%!4=wimp%!i% : wimp%!0=c%
+   SYS "Wimp_GetIconState",,wimp%
+   sp$=FNWimp_GetStringAtAddress(wimp%!28)
+   SYS "Wimp_DeleteIcon",,wimp%
+   CASE sprites% OF
+    WHEN 1    : wimp%!32=1
+    OTHERWISE :
+     SYS "OS_SpriteOp",&108,sprites% TO ,,,n%
+     j%=0
+     REPEAT : j%+=1
+      SYS "OS_SpriteOp",&10D,sprites%,pointer_block%,20,j%
+      sp2$=FNWimp_GetStringAtAddress(pointer_block%)
+     UNTIL j%=n% OR sp$=sp2$
+     IF sp$=sp2$ THEN wimp%!32=sprites% ELSE wimp%!32=1
+   ENDCASE
+   wimp%!4=c%
+   SYS "Wimp_CreateIcon",,wimp%+4 TO handle%
+   i%+=4
+ UNTIL (wimp%!i%)=-1
+ENDCASE
+=c%
+:
+DEF PROCWimp_WindowBringToTop(window%)
+!wimp%=window%
+SYS "Wimp_GetWindowState",,wimp%
+wimp%!28=-1
+SYS "Wimp_OpenWindow",,wimp%
+ENDPROC
+:
+DEF PROCWimp_WindowClose(window%)
+!wimp%=window%
+SYS "Wimp_CloseWindow",,wimp%
+ENDPROC
+:
+DEF PROCWimp_WindowForceDraw(window%)
+CASE window% OF
+ WHEN -1   : SYS "Wimp_ForceRedraw",-1,0,0,2*1280,2*1024
+ OTHERWISE : SYS "Wimp_ForceRedraw",window%,0,-2*1024,2*1280,0
+ENDCASE
+ENDPROC
+:
+DEF PROCWimp_WindowOpen(window%)
+!wimp%=window%
+SYS "Wimp_GetWindowState",,wimp%
+wimp%!28=-1
+SYS "Wimp_OpenWindow",,wimp%
+ENDPROC
+:
+PROCWimp_WindowInterface
+SYS"Wimp_BorderWindow",,wimp%
+ENDPROC
+REM|
+REM|
+REM|
+REM|                  -------------------------
+REM|                          2.Icons
+REM|                  -------------------------
+REM|
+REM|
+REM|             ------------------------------------------
+REM|
+REM|                      Procedures :
+REM|
+REM|              FNWimp_IconBar(Sprite$)
+REM|              PROCWimp_IconBarDel(icon%)
+REM|              PROCWimp_IconCaret(window%,icon%,chars%)
+REM|              FNWimp_IconText(window%,icon%)
+REM|              FNWimp_IconValidation(window%,icon%)
+REM|              PROCWimp_IconDisable(window%,icon%)
+REM|              PROCWimp_IconEnable(window%,icon%)
+REM|              FNWimp_IconPutSprite(window%,icon%,sprite$)
+REM|              PROCWimp_IconPutText(window%,icon%,text$)
+REM|              PROCWimp_IconInterfaceStart
+REM|              PROCWimp_IconInterfaceFinish
+REM|              FNWimp_IconCheckSelect(window%,icon%)
+REM|              PROCWimp_IconSetSelect(window%,icon%)
+REM|              PROCWimp_IconToggleSelect(window%,icon%)
+REM|              PROCWimp_IconUnsetSelect(window%,icon%)
+REM|
+REM|             ------------------------------------------
+REM|
+:
+DEF FNWimp_IconBar(Sprite$)
+LOCAL icon%
+wimp%!0=-1
+wimp%!4=0     : wimp%!8=0
+wimp%!12=68 : wimp%!16=68
+wimp%!20=&3002
+$(wimp%+24)=Sprite$
+SYS "Wimp_CreateIcon",,wimp% TO icon%
+=icon%
+:
+DEF PROCWimp_IconBarLeft(Sprite$)
+LOCAL icon%
+wimp%!0=-2
+wimp%!4=0     : wimp%!8=0
+wimp%!12=68 : wimp%!16=68
+wimp%!20=&3002
+$(wimp%+24)=Sprite$
+SYS "Wimp_CreateIcon",,wimp% TO icon%
+=icon%
+:
+DEF PROCWimp_IconBarDel(icon%)
+wimp%!12=-2 : wimp%!16=icon%
+!wimp%=wimp%!12 : wimp%!4=wimp%!16
+SYS"Wimp_GetIconState",,wimp%
+SYS "Wimp_DeleteIcon",,wimp%
+REM SYS "Wimp_ForceRedraw",!wimp%,wimp%!8,wimp%!12,wimp%!16,wimp%!20
+ENDPROC
+:
+DEF FNWimp_IconBarText(s$,t$)
+LOCAL icon%
+wimp%!0=-1
+wimp%!4=0   : wimp%!8=-15
+wimp%!12=40 : wimp%!16=80
+wimp%!20=&1700310B
+IF LEN(t$)>20 THEN t$=MID$(t$,0,20)
+$sprite="S"+s$
+$(text+(20*nmr%))=t$
+wimp%!24=text+(20*nmr%)
+wimp%!28=sprite
+wimp%!32=6
+SYS "Wimp_CreateIcon",,wimp% TO icon%
+=icon%
+:
+DEF PROCWimp_IconCaret(window%,icon%,chars%)
+SYS "Wimp_SetCaretPosition",window%,icon%,,,-1,chars%
+ENDPROC
+:
+DEF FNWimp_IconText(window%,icon%)
+wimp%!0=window% : wimp%!4=icon%
+SYS "Wimp_GetIconState",,wimp%
+IF ((wimp%!24) AND &100)=0 ERROR 1,"Icon isn't indirected"
+=$(wimp%!28)
+:
+DEF FNWimp_IconValidation(window%,icon%)
+wimp%!0=window% : wimp%!4=icon%
+SYS "Wimp_GetIconState",,wimp%
+IF ((wimp%!24) AND &100)=0 ERROR 1,"Icon isn't indirected"
+=$(wimp%!32)
+:
+DEF PROCWimp_IconDisable(window%,icon%)
+wimp%!0=window% : wimp%!4=icon%
+wimp%!8=1<<22   : wimp%!12=1<<22
+SYS "Wimp_SetIconState",,wimp%
+ENDPROC
+:
+DEF PROCWimp_IconEnable(window%,icon%)
+wimp%!0=window% : wimp%!4=icon%
+wimp%!8=0       : wimp%!12=1<<22
+SYS "Wimp_SetIconState",,wimp%
+ENDPROC
+:
+DEF FNWimp_IconPutSprite(window%,icon%,sprite$)
+wimp%!0=window%:wimp%!4=icon%
+SYS "Wimp_GetIconState",,wimp%
+SYS "Wimp_DeleteIcon",,wimp%
+wimp%!4=wimp%!8   : wimp%!8=wimp%!12  : wimp%!12=wimp%!16
+wimp%!16=wimp%!20 : wimp%!20=wimp%!24 : $(wimp%+24)=sprite$
+SYS "Wimp_CreateIcon",,wimp% TO icon%
+=icon%
+:
+DEF PROCWimp_IconPutText(window%,icon%,text$)
+wimp%!0=window% : wimp%!4=icon%
+SYS "Wimp_GetIconState",,wimp%
+IF ((wimp%!24) AND &100)=0 ERROR 1,"Icon isn't indirected"
+$(wimp%!28)=text$
+wimp%!0=window% : wimp%!4=icon%
+wimp%!8=0 : wimp%!12=0
+SYS "Wimp_SetIconState",,wimp%
+ENDPROC
+:
+DEF PROCWimp_IconInterfaceStart
+SYS"Wimp_BorderIcon",,wimp%
+ENDPROC
+:
+DEF PROCWimp_IconInterfaceFinish
+wimp%!8=0
+SYS"Wimp_BorderIcon",,wimp%
+ENDPROC
+:
+DEF FNWimp_IconCheckSelect(window%,icon%)
+LOCAL c%
+c%=wimp%+900
+!c%=window%
+c%!4=icon%
+SYS"Wimp_GetIconState",,c%
+=((c%!24) AND (1<<21))<>0
+:
+DEF PROCWimp_IconSetSelect(window%,icon%)
+LOCAL c%
+c%=wimp%+900
+!c%=window%
+c%!4=icon%
+c%!8=&200000
+c%!12=&200000
+SYS"Wimp_SetIconState",,c%
+ENDPROC
+:
+DEF PROCWimp_IconToggleSelect(window%,icon%)
+LOCAL c%
+c%=wimp%+900
+!c%=window%
+c%!4=icon%
+c%!8=&200000
+c%!12=0
+SYS"Wimp_SetIconState",,c%
+ENDPROC
+:
+DEF PROCWimp_IconUnsetSelect(window%,icon%)
+LOCAL c%
+c%=wimp%+900
+!c%=window%
+c%!4=icon%
+c%!8=0
+c%!12=&200000
+SYS"Wimp_SetIconState",,c%
+ENDPROC
+:
+REM|
+REM|
+REM|
+REM|                  -------------------------
+REM|                          3.Menus
+REM|                  -------------------------
+REM|
+REM|
+REM|           ----------------------------------------------
+REM|
+REM|                      Procedures :
+REM|
+REM|
+REM|            PROCWimp_MenuAdjustOn(menu%)
+REM|            FNWimp_MenuChoice(level%)
+REM|            FNWimp_MenuCreate(menu$)
+REM|            FNWimp_MenuColours
+REM|            FNWimp_MenuCreateColours(title$)
+REM|            FNWimp_MenuNoOfEntries(menu$)
+REM|            PROCWimp_MenuBackGroundColour(menu%,item%,colour%)
+REM|            PROCWimp_MenuCentre(menu%,item%)
+REM|            PROCWimp_MenuClose
+REM|            PROCWimp_MenuDisable(menu%,item%)
+REM|            PROCWimp_MenuDottedLine(menu%,item%)
+REM|            PROCWimp_MenuEnable(menu%,item%)
+REM|            PROCWimp_MenuForegroundColour(menu%,item%,colour%)
+REM|            PROCWimp_MenuGlue(menu1%,item%,menu2%)
+REM|            PROCWimp_MenuItem(menu%,item%,item$)
+REM|            PROCWimp_MenuMessage(menu%,item%)
+REM|            PROCWimp_MenuPopUp(Menu%,x%,y%)
+REM|            PROCWimp_MenuPopUpBar(x%,y%)
+REM|            PROCWimp_MenuTick(menu%,item%)
+REM|            PROCWimp_MenuTitle(menu%,title$)
+REM|            PROCWimp_MenuWrite(menu%,item%,buffer%,val%,BufferLength%)
+REM|
+REM|           ----------------------------------------------
+REM|
+:
+DEF PROCWimp_MenuAdjustOn(menu%)
+SYS "Wimp_GetPointerInfo",,pointer_block%
+IF ((pointer_block%!8)AND1)=1 THEN SYS "Wimp_CreateMenu",,menu%,pointer_block%!0,pointer_block%!4
+ENDPROC
+:
+DEF FNWimp_MenuChoice(level%)
+=(wimp%!(4*level%))+1
+:
+DEF FNWimp_MenuCreate(menu$)
+IF menu$="Colours" THEN=FNWimp_MenuColours
+LOCAL menu%,index%,width%,length%,k%,s%
+DIM menu% 28+FNWimp_MenuNoOfEntries(menu$)*24
+menu%?12=7   : menu%?13=2  : menu%?14=7 :menu%?15=0
+menu%!16=140 : menu%!20=44 : menu%!24=0
+index%=menu%+28
+$menu%=LEFT$(menu$,INSTR(menu$,"\")-1)
+width%=LEN(LEFT$(menu$,INSTR(menu$,"\")-1))
+menu$+="\" : Menu_NoOfEntries%=0
+WHILE menu$<>""
+menu$=MID$(menu$,INSTR(menu$,"\")+1)
+CASE menu$ OF
+ WHEN ""
+ OTHERWISE :
+  !index%=0 : index%!4=-1 : index%!8=&7000021
+  length%=INSTR(menu$,"\")-1
+  k%=INSTR(LEFT$(menu$,length%),">")
+  CASE k% OF
+   WHEN 0
+   OTHERWISE
+    s%=EVAL(MID$(menu$,k%+1,length%-k%))
+    index%!4=s%
+    length%=k%-1
+  ENDCASE
+  $(index%+12)=LEFT$(menu$,length%)
+  IF length%>width% THEN width%=length%
+  index%+=24
+ENDCASE
+ENDWHILE
+menu%!16=16*(width%+1)
+index%!-24=index%!-24 OR &80 : =menu%
+:
+DEF FNWimp_MenuColours
+=FNWimp_MenuCreateColours(" ")
+:
+DEF FNWimp_MenuCreateColours(title$)
+LOCAL x$,men%,j%,i%
+x$=title$+"\0\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15"
+men%=FNWimp_MenuCreate(x$)
+FOR i%=0 TO 15
+CASE TRUE OF
+WHEN i%<4,i%=9,i%=12,i%=14,i%=15 : j%=7
+OTHERWISE : j%=0
+ENDCASE
+men%?(39+i%*24)=i%*16+j%
+PROCWimp_MenuCentre(men%,i%+1)
+NEXT
+=men%
+:
+DEF FNWimp_MenuNoOfEntries(menu$)
+LOCAL n% ,j% : n%=0 : j%=0
+REPEAT
+j%=INSTR(menu$,"\",j%+1)
+IF j%<>0 THEN n%+=1
+UNTIL j%=0
+=n%
+:
+DEF PROCWimp_MenuBackGroundColour(menu%,item%,colour%)
+LOCAL fore%,i%
+fore%=(menu%?(39+(item%-1)*24))MOD16
+i%=((menu%?(39+(item%-1)*24))DIV16)MOD16
+menu%?(39+(item%-1)*24)=fore%+16*colour%+i%
+ENDPROC
+:
+DEF PROCWimp_MenuCentre(menu%,item%)
+menu%!(36+(item%-1)*24)=menu%!(36+(item%-1)*24)OR(1<<3)
+ENDPROC
+:
+DEF PROCWimp_MenuClose
+SYS "Wimp_CreateMenu",-1
+ENDPROC
+:
+DEF PROCWimp_MenuDisable(menu%,item%)
+menu%!(36+(item%-1)*24)=menu%!(36+(item%-1)*24)OR(1<<22)
+ENDPROC
+:
+DEF PROCWimp_MenuDottedLine(menu%,item%)
+menu%!(28+(item%-1)*24)=(menu%!(28+(item%-1)*24))OR2
+ENDPROC
+:
+DEF PROCWimp_MenuEnable(menu%,item%)
+PROCWimp_MenuDisable(menu%,item%)
+menu%!(36+(item%-1)*24)=menu%!(36+(item%-1)*24)EOR(1<<22)
+ENDPROC
+:
+DEF PROCWimp_MenuForegroundColour(menu%,item%,colour%)
+menu%?(39+(item%-1)*24)=colour%+16*((menu%?(39+(item%-1)*24))DIV16)
+ENDPROC
+:
+DEF PROCWimp_MenuGlue(menu1%,item%,menu2%)
+menu1%!(8+item%*24)=menu2%
+ENDPROC
+:
+DEF PROCWimp_MenuItem(menu%,item%,item$)
+$(menu%+(40+(item%-1)*24))=LEFT$(item$,12)+CHR$0
+ENDPROC
+:
+DEF PROCWimp_MenuMessage(menu%,item%)
+menu%!(28+(item%-1)*24)=(menu%!(28+(item%-1)*24))EOR(1<<3)
+ENDPROC
+:
+DEF PROCWimp_MenuPopUp(Menu%,x%,y%)
+menu%=Menu%
+SYS "Wimp_CreateMenu",,menu%,x%-64,y%+20
+ENDPROC
+:
+DEF PROCWimp_MenuPopUpBar(x%,y%)
+LOCAL n% : n%=0
+WHILE ((Bar_Menu%!(28+n%*24))AND%10000000)=0
+n%+=1
+ENDWHILE
+SYS "Wimp_CreateMenu",,Bar_Menu%,x%-64,96+n%*44
+menu%=Bar_Menu%
+ENDPROC
+:
+DEF PROCWimp_MenuTick(menu%,item%)
+menu%!(28+(item%-1)*24)=(menu%!(28+(item%-1)*24))EOR1
+ENDPROC
+:
+DEF PROCWimp_MenuTitle(menu%,title$)
+$menu%=LEFT$(title$,12)+CHR$0
+ENDPROC
+:
+DEF PROCWimp_MenuWrite(menu%,item%,buffer%,val%,BufferLength%)
+menu%!(28+(item%-1)*24)=(menu%!(28+(item%-1)*24))OR4
+menu%!(36+(item%-1)*24)=menu%!(36+(item%-1)*24)OR&100
+menu%!(40+(item%-1)*24)=buffer%
+menu%!(44+(item%-1)*24)=val%
+menu%!(48+(item%-1)*24)=BufferLength%
+ENDPROC
+:
+REM|
+REM|
+REM|
+REM|                  -------------------------
+REM|                          4.Sprites
+REM|                  -------------------------
+REM|
+REM|
+REM|                ------------------------------------
+REM|
+REM|                      Procedures :
+REM|
+REM|
+REM|                  PROCWimp_SpritesLoad
+REM|                  PROCWimp_SpritesPathLoad(pathname$
+REM|
+REM|
+REM|
+REM|                ------------------------------------
+REM|
+:
+DEF PROCWimp_SpritesLoad
+PROCWimp_SpritesPathLoad("<Obey$Dir>.Sprites")
+direct_sprites%=sprites%
+ENDPROC
+:
+DEF PROCWimp_SpritesPathLoad(pathname$)
+LOCALS%,T%
+S%=OPENIN"<Obey$Dir>.Sprites":T%=EXT#S%+16:CLOSE#S%
+DIMsprites%T%,spname%12
+!sprites%=T%:sprites%!8=0
+SYS"OS_SpriteOp",&109,sprites%
+SYS"OS_SpriteOp",&10A,sprites%,pathname$
+ENDPROC
+:
+REM|
+REM|
+REM|
+REM|                  -------------------------
+REM|                          5.Files
+REM|                  -------------------------
+REM|
+REM|
+REM|                -------------------------------
+REM|
+REM|                      Procedures :
+REM|
+REM|
+REM|                  FNWimp_GetFilePathName
+REM|                  FNWimp_FileLoad(pathname$)
+REM|                  FNWimp_GetStringAtAddress(array%)
+REM|                  FNWimp_GetFileFromPathname(f$)
+REM|                  PROCWimp_SendToEdit(file$)
+REM|
+REM|                -------------------------------
+REM|
+REM|
+REM|
+:
+DEF FNWimp_GetFilePathName
+=FNWimp_GetStringAtAddress(wimp%+44)
+:
+DEF FNWimp_FileLoad(pathname$)
+LOCALS%,T%,file%
+S%=OPENINpathname$
+T%=EXT#S%+16
+CLOSE#S%
+DIMfile%T%
+OSCLI("LOAD"+pathname$+""+STR$~file%)
+=file%
+;
+DEF FNWimp_GetStringAtAddress(array%)
+LOCALs$:s$=""
+WHILE(?array%<>13)AND(?array%<>0):s$+=CHR$(?array%):array%+=1:ENDWHILE:
+=s$
+:
+DEF FNWimp_GetFileFromPathname(f$)
+CASE INSTR(f$,".") OF
+ WHEN 0    :=f$
+ OTHERWISE :=FNWimp_GetFileFromPathname(RIGHT$(f$,LEN(f$)-INSTR(f$,".")))
+ENDCASE
+:
+DEF PROCWimp_SendToEdit(file$)
+LOCAL n%
+wimp%!4=&6CC01C0C
+wimp%!16=5
+wimp%!36=0
+wimp%!40=&FFF
+$(wimp%+44)=file$+CHR$0
+n%=LENfile$+45
+IF n%MOD4 THEN !wimp%=4+(n%>>2)<<2 ELSE !wimp%=n%
+SYS "Wimp_SendMessage",17,wimp%,0
+ENDPROC
+:
+REM|
+REM|
+REM|
+REM|                  -------------------------
+REM|                      5.Miscellaneous
+REM|                  -------------------------
+REM|
+REM|
+REM|                -------------------------------
+REM|
+REM|                      Procedures :
+REM|
+REM|
+REM|                  PROCWimp_Start(TaskName$)
+REM|                  FNWimp_BASICParameters
+REM|                  PROCWimp_SetEventVariables
+REM|                  PROCWimp_Error(task%,TaskName$)
+REM|                  PROCWimp_CloseDown
+REM|                  PROCWimp_Quit
+REM|                  FNWimp_ReadVariable(Variable$)
+REM|                  FNUCase(Text$)
+REM|
+REM|                -------------------------------
+REM|
+:
+DEF PROCWimp_Start(TaskName$,wimp_memory%,icon%)
+DIM wimp% wimp_memory%,icons% icon%
+DIM wtmp% wimp_memory%,icons% icon%
+IF wimp_memory%<256 THEN wimp_memory%=256
+icon_memory%=icons%+icon%
+task$=TaskName$
+indirect_sprites%=1 : direct_sprites%=1
+PROCWimp_SetEventVariables
+ON ERROR PROCWimp_Error:END
+SYS"Wimp_Initialise",200,&4B534154,TaskName$ TO version%,task%
+ENDPROC
+:
+DEF FNWimp_BASICParameters
+ LOCAL com$,param$,I%
+ SYS "OS_GetEnv" TO com$
+ params$=""
+ I%=INSTR(com$," -quit ")
+ IF I% THEN params$=MID$(com$,INSTR(com$," ",I%+LEN" -quit ")+1)
+=params$
+:
+DEF PROCWimp_SetEventVariables
+DIM pointer_block% 20
+interface%=FALSE
+null%=1  :draw%=2 :  pointer_leaving%=1<<4
+pointer_entering%=1<<5:mouse%=1<<6:drag%=1<<7
+key%=1<<8:menu%=1<<9:scroll%=1<<10
+lose_caret%=1<<11:gain_caret%=1<<12:message%=(1<<17)+(1<<18)
+recorder%=1<<18:acknowledge%=1<<19:window%=0
+sprites%=1:version%=0:task%=0
+Bar_Window%=-2:Bar_Icon%=0:Bar_Menu%=0
+x_origin%=0:y_origin%=0:SaveWindow%=-3
+message_quit%=0:message_save%=2:message_load%=3
+mouse_button%=2:save_event%=0
+top_line%=0 : bottom_line%=0
+ENDPROC
+:
+DEF PROCWimp_Error
+LOCALX$,x%,k
+ON ERROR OFF
+x%=ERL
+X$=REPORT$+" at line "+STR$(x%DIV10)
+DIMErrorMsg%36
+ErrorMsg%!0=36:ErrorMsg%!12=0:ErrorMsg%!16=&81080:ErrorMsg%!20=x%
+$(ErrorMsg%+24)="!RunImage"
+SYS"Wimp_SendMessage",17,ErrorMsg%
+CASE ERR OF
+ WHEN 791  : PROCWimp_WindowAlert(task$,"The network port that Notify uses has been claimed by another program.")
+ OTHERWISE : IF nmr%>0 THEN
+             wsd$=FNWimp_ReadVariable("Wimp$ScrapDir")
+              PROCWimp_WindowAlert(task$,"Interal error code "+STR$ERR+".  Notify data being preserved in Wimp$ScrapDir, if set.")
+              IF wsd$<>"" THEN
+               c=OPENOUT "<Wimp$ScrapDir>.Notify"
+               FOR k=1 TO nmr%
+               BPUT#c,"Notify from station "+STR$rnet%(k)+"."+STR$rstat%(k)
+               BPUT#c,rmes$(k)
+               BPUT#c,10
+              NEXT
+              CLOSE#c
+              *settype <wimp$scrapdir>.Notify FFF
+             ENDIF
+            ELSE
+             PROCWimp_WindowAlert(task$,"Interal Error code "+STR$ERR+", must exit immediately.")
+            ENDIF
+            PROCWimp_NetCloseDown
+ENDCASE
+PROCWimp_CloseDown
+ENDPROC
+:
+DEF PROCWimp_CloseDown
+SYS"Wimp_CloseDown",task%,"TASK"
+ENDPROC
+:
+DEF PROCWimp_Quit
+finished%=TRUE
+ENDPROC
+:
+DEF FNWimp_ReadVariable(Variable$)
+LOCALlen%,result%,variable%
+$wimp%=Variable$
+SYS"OS_ReadVarVal",wimp%,wimp%+255,255,,3TO,,len%
+wimp%?(len%+255)=13
+=$(wimp%+255)
+:
+DEF FNUCase(u$)
+a$=""
+FOR k=1 TO LEN(u$)
+c$=MID$(u$,k,1)
+c=ASC(c$)
+IF c>=97 AND c<=122 THEN c=c-32
+a$=a$+CHR$(c)
+NEXT k
+=a$
+
+:
+REM|
+REM|
+REM|
+REM|
+REM|                   ----------------
+REM|                     Wimp Polling
+REM|                   ----------------
+REM|
+REM|
+:
+DEF PROCWimp_WaitForEvent
+LOCAL mask%,event%
+finished%=FALSE
+REM mask%=%111000011001
+mask%=%111000011000
+REPEAT
+ SYS"OS_ReadMonotonicTime" TO tim
+ SYS"Wimp_PollIdle",mask%,wimp%,tim+10 TO event%
+ CASE event% OF
+  WHEN0 : SYS"Econet_ExamineReceive",handle% TO s%
+          IF s%=9 THEN PROCReadReceive
+  WHEN1 : PROCWimp_PollDrawWindow
+  WHEN2 : SYS"Wimp_OpenWindow",,wimp%
+  WHEN3 : PROCWimp_PollCloseWindow
+  WHEN4 :
+  WHEN5 :
+  WHEN6 : PROCWimp_PollMouseClick
+  WHEN7 : PROCWimp_PollSaveMessage
+  WHEN8 : PROCWimp_PollKeyPress
+  WHEN9 : PROCEvent_MenuChoice(menu%)
+  WHEN10:
+  WHEN11:
+  WHEN12:
+  WHEN17,18: PROCWimp_PollMessages
+  WHEN19:
+ ENDCASE
+UNTIL finished%
+ENDPROC
+:
+DEF PROCWimp_PollDrawWindow
+LOCAL more%
+SYS"Wimp_RedrawWindow",,wimp%TOmore%
+window%=wimp%!0
+x_origin%=16+wimp%!4-wimp%!20:y_origin%=-16+wimp%!16-wimp%!24
+WHILEmore%
+ IF interface% THEN SYS"Wimp_BorderWindow",,wimp%
+ PROCEvent_Draw(window%,x_origin%,y_origin%)
+ SYS"Wimp_GetRectangle",,wimp%TOmore%
+ENDWHILE
+ENDPROC
+:
+DEF PROCWimp_PollCloseWindow
+  SYS "Wimp_GetPointerInfo",,wimp%
+  window%=wimp%!12 : buttons%=wimp%!8
+  !wimp%=window% : SYS "Wimp_CloseWindow",,wimp%
+ PROCEvent_WindowClose(window%,buttons%)
+ENDPROC
+:
+DEF PROCWimp_PollMouseClick
+ button%=wimp%!8:window%=wimp%!12:icon%=wimp%!16:x%=wimp%!0:y%=wimp%!4
+ CASE button% OF
+   WHEN2    : PROCWimp_PollMenuPopUp
+   WHEN4,1  : PROCWimp_PollEventMouseClick
+   OTHERWISE: CASE FNEvent_Save(window%) OF
+               WHEN 1  : IF icon%=0 THEN PROCWimp_PollDragBox(window%,icon%)
+                         IF icon%=2 THEN PROCWimp_PollSaveFile(window%)
+               WHEN 2  : IF button%=64 THEN PROCWimp_PollDragBox(window%,icon%)
+              ENDCASE
+ ENDCASE
+ENDPROC
+:
+DEF PROCWimp_PollMenuPopUp
+menu%=FNEvent_Menu(window%,icon%)
+  CASE menu%  OF
+   WHEN FALSE:
+   OTHERWISE :
+     CASE window% OF
+      WHEN -2   : n%=0
+        WHILE ((menu%!(28+n%*24))AND%10000000)=0
+         n%+=1
+        ENDWHILE
+        SYS "Wimp_CreateMenu",,menu%,x%-64,96+n%*44
+      OTHERWISE : SYS"Wimp_CreateMenu",,menu%,x%-64,y%+20
+     ENDCASE
+  ENDCASE
+ENDPROC
+:
+DEF PROCWimp_PollMouseSave
+ CASE icon% OF
+  WHEN 0 : IF button% AND &50 THEN PROCWimp_PollDragBox(window%)
+  WHEN 2 : IF button% AND 5 THEN  PROCWimp_PollSaveFile(window%)
+ ENDCASE
+ENDPROC
+:
+DEF PROCWimp_PollEventMouseClick
+ IF interface% THEN SYS"Wimp_BorderIcon",,wimp%
+ PROCEvent_MouseClick(window%,icon%,button%,x%,y%)
+ CASE  interface% OF
+  WHEN TRUE :
+   wimp%!0=x%:wimp%!4=y% : wimp%!8=0
+   wimp%!12=window% : wimp%!16=icon%
+   SYS"Wimp_BorderIcon",,wimp%
+ ENDCASE
+ENDPROC
+:
+DEF PROCWimp_PollSaveFile(window%)
+ wimp%!0=window% : wimp%!4=1 : SYS "Wimp_GetIconState",,wimp%
+ file$=$(wimp%!28)
+ CASE INSTR(file$,".") OF
+  WHEN 0   :
+   $(wimp%+4)="To save, drag the icon to a directory window"
+   SYS "Wimp_ReportError",wimp%,16,task$
+  OTHERWISE:
+   PROCEvent_SaveFile(file$,window%)
+ ENDCASE
+ SYS"Wimp_CreateMenu",-1
+ENDPROC
+:
+DEF PROCWimp_PollDragBox(window%,icon%)
+LOCALx%,y%
+ fwindow%=window%
+ ficon%=icon%
+ !wimp%=window%
+ SYS"Wimp_GetWindowState",,wimp%
+ x%=wimp%!4-wimp%!20:y%=wimp%!16-wimp%!24
+ wimp%!4=icon%
+ SYS"Wimp_GetIconState",,wimp%
+ !wimp%=window%
+ wimp%!4=5
+ wimp%!8=x%+wimp%!8:wimp%!12=y%+wimp%!12
+ wimp%!16=x%+wimp%!16:wimp%!20=y%+wimp%!20
+ wimp%!24=0:wimp%!28=0
+ wimp%!32=&7FFFFFFF:wimp%!36=&7FFFFFFF
+ SYS"Wimp_DragBox",,wimp%
+ENDPROC
+:
+DEF PROCWimp_PollKeyPress
+  window%=wimp%!0:icon%=wimp%!4:key%=wimp%!24
+  CASE FNEvent_Save(window%) OF
+   WHEN 1    : PROCWimpPoll_SaveFile(window%)
+   OTHERWISE : PROCEvent_KeyPress(window%,icon%,key%)
+  ENDCASE
+ENDPROC
+:
+DEF PROCWimp_PollDragMessage
+LOCAL window%,icon%,x%,y%
+ SYS"Wimp_GetPointerInfo",,wimp%
+ twindow%=wimp%!12 : ticon%=wimp%!16 : x%=wimp%!0 : y%=wimp%!4
+ IF FNEvent_Save(fwindow%)=1 THEN
+  wimp%!0=fwindow% : wimp%!4=1 : SYS "Wimp_GetIconState",,wimp%
+  file$=$(wimp%!28)
+  file$=FNWimp_GetFileFromPathname(file$)
+  wimp%!20=twindow%
+  wimp%!24=icon%
+  wimp%!28=x%:wimp%!32=y%
+  wimp%!36=length%
+  wimp%!0=64
+  wimp%!12=0
+  wimp%!16=1
+  wimp%!40=&FFF
+  $(wimp%+44)=file$
+  SYS"Wimp_SendMessage",17,wimp%,wimp%!20,wimp%!24
+ ELSE
+  IF FNEvent_Save(fwindow%)=2 THEN PROCEvent_BoxDrag(fwindow%,ficon%,twindow%,ticon%)
+ ENDIF
+ENDPROC
+:
+DEF PROCWimp_PollMessages
+REM LOCAL file$
+    file$=FNWimp_GetStringAtAddress(wimp%+44)
+    CASE wimp%!16 OF
+     WHEN 0 : finished%=TRUE
+     WHEN 1 :
+     WHEN 2 :
+      PROCWimp_IconPutText(fwindow%,1,file$)
+      wimp%!0=fwindow% : wimp%!4=1 : SYS "Wimp_GetIconState",,wimp%
+      $(wimp%!28)=file$
+      wimp%!0=fwindow% : wimp%!4=1 : wimp%!8=0 : wimp%!12=0
+      SYS "Wimp_SetIconState",,wimp%
+      PROCWimp_IconCaret(fwindow%,1,LENfile$)
+      SYS "Wimp_SetCaretPosition",fwindow%,1,,,-1,LENfile$
+      PROCEvent_SaveFile(file$,fwindow%)
+     WHEN 3
+      REM Datablock type - Message_Dataload
+      loadwindow%=wimp%!20 : loadicon%=wimp%!24
+      loadxcoor%=wimp%!28 : loadycoor%=wimp%!32
+      loadestdatasize%=wimp%!36 : type$=STR$~(wimp%!40)
+      PROCEvent_LoadFile(file$,type$,loadwindow%,loadicon%)
+     WHEN &502
+      REM Request for Help (Interactive)
+      x%=wimp%!20       : y%=wimp%!24
+      button%=wimp%!28  : window%=wimp%!32
+      icon%=wimp%!36
+      PROCEvent_HelpRequest(window%,icon%)
+    ENDCASE
+ENDPROC
+:
+DEF FNWimp_GetStringAtAddress(array%)
+LOCALs$:s$=""
+WHILE(?array%<>13)AND(?array%<>0):s$+=CHR$(?array%):array%+=1:ENDWHILE:
+=s$
+:
+DEF FNWimp_GetFileFromPathname(f$)
+CASE INSTR(f$,".") OF
+ WHEN 0    :=f$
+ OTHERWISE :=FNWimp_GetFileFromPathname(RIGHT$(f$,LEN(f$)-INSTR(f$,".")))
+ENDCASE
+:
+DEF PROCWimp_Help(message$)
+$(wimp%+20)=message$+CHR$0
+!wimp%=(24+LEN(message$))AND NOT 3
+wimp%!12=wimp%!8
+wimp%!16=&503
+SYS "Wimp_SendMessage",17,wimp%,wimp%!4
+ENDPROC
+
+

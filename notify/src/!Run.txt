@@ -1,0 +1,11 @@
+Set Notify$Dir <Obey$Dir>
+IconSprites <Notify$Dir>.!Sprites
+
+| The following line sets the no. of messages that can appear on the icon bar.
+
+Set Notify$IconBarMessages 20
+
+| Run Prog
+
+Wimpslot -min 64k -max 64k
+Run <Notify$Dir>.!RunImage
