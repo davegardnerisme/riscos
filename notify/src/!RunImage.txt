@@ -1,4 +1,5 @@
 REM Remote Version 2.10
+REM this is heavy, heavy cruft
 LIBRARY "<Obey$Dir>.Wimp"
 PROCWimp_Start("Notify",617,1072)
 PROCUser_SetInitialData
