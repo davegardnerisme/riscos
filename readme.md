@@ -53,18 +53,18 @@ underlying protocol was still Econet.
 
 As explained [here](http://select.riscos.com/prm/networking/aunintro.html):
 
- | An Econet network was made up of a number of stations. Two networks could
- | be connected by means of a Bridge. Each computer connected was uniquely 
- | identified by two numbers. The first was the station number, which could
- | be between 1 and 254, the second was the network number, which could be
- | between 1 and 127.
+ > An Econet network was made up of a number of stations. Two networks could
+ > be connected by means of a Bridge. Each computer connected was uniquely 
+ > identified by two numbers. The first was the station number, which could
+ > be between 1 and 254, the second was the network number, which could be
+ > between 1 and 127.
 
 To get Econet working in the modern world, "Acorn Universal Networking" was
 created.
 
- | The term "AUN" has had many meanings in the past, but what we today call
- | "AUN" in RISC OS Select is a way to allow these Econet-based applications
- | to be run over an TCP/IP network (typically Ethernet).
+ > The term "AUN" has had many meanings in the past, but what we today call
+ > "AUN" in RISC OS Select is a way to allow these Econet-based applications
+ > to be run over an TCP/IP network (typically Ethernet).
 
 I had a degree of trouble getting this working out of the box with the Pi
 version. The problem was that the `NetI` module was not part of the
